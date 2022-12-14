@@ -4,7 +4,7 @@ Pillow
 cython
 matplotlib
 scikit-image
-tensorflow>=2.0.0,<=2.4.0
+tensorflow>=2.0.0,<=2.7.0
 opencv-python
 h5py
 imgaug
