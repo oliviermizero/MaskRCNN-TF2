@@ -1843,6 +1843,23 @@ def data_generator(dataset, config, shuffle=True, augment=False, augmentation=No
             error_count += 1
             if error_count > 5:
                 raise
+        
+class AnchorsLayer(KL.Layer):
+    def __init__(self, anchors, name="anchors", **kwargs):
+        super(AnchorsLayer, self).__init__(name=name, **kwargs)
+        self.anchors = tf.Variable(anchors)
+
+    def call(self, dummy):
+        return self.anchors
+
+    def get_config(self):
+        config = super(AnchorsLayer, self).get_config()
+        return config
+    
+def norm_boxes_graph2(x):
+    boxes,tensor_for_shape = x
+    shape = tf.shape(tensor_for_shape)[1:3]
+    return norm_boxes_graph(boxes,shape)
 
 
 ############################################################
@@ -1963,7 +1980,8 @@ class MaskRCNN(object):
             # TODO: can this be optimized to avoid duplicating the anchors?
             anchors = np.broadcast_to(anchors, (config.BATCH_SIZE,) + anchors.shape)
             # A hack to get around Keras's bad support for constants
-            anchors = KL.Lambda(lambda x: tf.Variable(anchors), name="anchors")(input_image)
+            #anchors = KL.Lambda(lambda x: tf.Variable(anchors), name="anchors")(input_image)
+            anchors=AnchorsLayer(anchors, name="anchors")(input_image)
         else:
             anchors = input_anchors
 
@@ -2713,7 +2731,8 @@ class MaskRCNN(object):
 
         # Build a Keras function to run parts of the computation graph
         inputs = model.inputs
-        if model.uses_learning_phase and not isinstance(K.learning_phase(), int):
+        #if model.uses_learning_phase and not isinstance(K.learning_phase(), int):
+        if not isinstance(K.learning_phase(), int):
             inputs += [K.learning_phase()]
         kf = K.function(model.inputs, list(outputs.values()))
 
@@ -2731,7 +2750,8 @@ class MaskRCNN(object):
         model_in = [molded_images, image_metas, anchors]
 
         # Run inference
-        if model.uses_learning_phase and not isinstance(K.learning_phase(), int):
+        #if model.uses_learning_phase and not isinstance(K.learning_phase(), int):
+        if not isinstance(K.learning_phase(), int):
             model_in.append(0.)
         outputs_np = kf(model_in)
 
